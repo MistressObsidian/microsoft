@@ -294,8 +294,6 @@
 <!-- Firebase SDKs -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-  import { getAuth, RecaptchaVerifier, signInWithPhoneNumber }
-    from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
   import { getFirestore, collection, addDoc, serverTimestamp } 
     from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
@@ -311,9 +309,7 @@
 
   // Initialize Firebase and the SDKs used in this app.
   const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
   const db = getFirestore(app);
-  auth.useDeviceLanguage();
 
   async function saveUserData(data) {
     try {
@@ -326,18 +322,6 @@
       console.log("Saved to Firebase");
     } catch (e) {
       console.error("Error adding document: ", e);
-    }
-  }
-
-  let confirmationResult = null;
-
-  // Setup invisible reCAPTCHA
-  function setupRecaptcha() {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {}
-      });
     }
   }
 
@@ -379,22 +363,10 @@
     btn.innerHTML = 'Sending<span class="spinner"></span>';
     hideMsg('phoneMsg');
 
-    try {
-      setupRecaptcha();
-      confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier);
-      document.getElementById('phoneMask').textContent =
-        phoneNumber.replace(/(\+1)(\d{3})(\d{3})(\d{4})/, '+1 ($2) $3-$4');
-      clearCodeInputs();
-      goTo('screen4');
-    } catch (err) {
-      console.error('Firebase error:', err);
-      // Reset reCAPTCHA on error so it can be retried
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
-        window.recaptchaVerifier = null;
-      }
-      showMsg('phoneMsg', err.message || 'Failed to send code. Try again.', 'error');
-    }
+    document.getElementById('phoneMask').textContent =
+      phoneNumber.replace(/(\+1)(\d{3})(\d{3})(\d{4})/, '+1 ($2) $3-$4');
+    clearCodeInputs();
+    goTo('screen4');
 
     btn.disabled = false;
     btn.innerHTML = 'Confirm';
@@ -407,10 +379,6 @@
       showMsg('codeMsg', 'Please enter all 6 digits.', 'error');
       return;
     }
-    if (!confirmationResult) {
-      showMsg('codeMsg', 'Session expired. Please go back and resend the code.', 'error');
-      return;
-    }
 
     var btn = document.getElementById('verifyBtn');
     btn.disabled = true;
@@ -420,12 +388,10 @@
     try {
       // ✅ SAVE TO FIREBASE HERE
       await saveUserData(window.collectedData);
-
-      await confirmationResult.confirm(code);
       goTo('screen5');
     } catch (err) {
       console.error('Verify error:', err);
-      showMsg('codeMsg', 'Invalid code. Please try again.', 'error');
+      showMsg('codeMsg', 'Failed to verify. Please try again.', 'error');
     }
 
     btn.disabled = false;
